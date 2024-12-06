@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using CodeBase.Logic;
-using CodeBase.Terrain;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -9,57 +8,144 @@ namespace CodeBase.InputLogic
 {
     public class TouchInput : MonoBehaviour
     {
+        [SerializeField] private Texture _texture;
         [SerializeField] private LayerMask _groundMask;
         [SerializeField] private float _rayDistance = 100f;
-        
+        [SerializeField] public GameObject meshFinderPrefab;
+
         private LayerMask _uiLayerMask = 5;
 
         private PointerEventData _pointerEventData;
         private List<RaycastResult> _results;
-
-        private TerrainEditor _terrainEditor;
         private Ray _ray;
-
-        public GameObject meshFinderPrefab;
-
-        private GameObject _meshFinderInstance;
+        
+        private GameObject _brushInstance;
         private GridModifier _gridModifier;
         
-        public event Action<Vector3, LayerMask> BrushMoved;
+        private float _touchTime = 0f;
+        private float _maxTouchDuration = 0.3f;
+        private bool _isTouching = false;
+        private EditorType _currentEditor;
+        private float _lastBrushTime = 0;
+        private float _brushCooldown = 0.2f;
+
+        public event Action<Vector3, LayerMask> BrushMovedGrid;
+        public event Action<Vector3, LayerMask> BrushMovedUnit;
+        public event Action<Vector3, LayerMask> BrushMovedTexture;
         
         private void Start()
         {
-            _meshFinderInstance = Instantiate(meshFinderPrefab);
+            _brushInstance = Instantiate(meshFinderPrefab);
             _pointerEventData = new PointerEventData(EventSystem.current);
             _results = new List<RaycastResult>();
         }
 
-        void Update()
+        private void Update()
         {
-            HandleTouch();
+            switch (_currentEditor)
+            {
+                case EditorType.GridEditor:
+                    HandleGridModifierTouch();
+                    break;
+
+                case EditorType.TextureEditor:
+                    HandleTextureModifierTouch();
+                    break;
+                
+                case EditorType.PlacementEditor:
+                    HandleUnitPlacementTouch();
+                    break;
+            }
         }
 
-        public Vector3 GetBrushPosition() => 
-            _meshFinderInstance.transform.position;
+        public void SetCurrentEditor(EditorType editor) => 
+            _currentEditor = editor;
 
-        private void HandleTouch()
+        private void HandleUnitPlacementTouch()
         {
             if (Input.touchCount > 0)
             {
                 Touch touch = Input.GetTouch(0);
-                
+
                 if (IsPointerOverUI(touch.position))
                     return;
-                
-                if (touch.phase == TouchPhase.Stationary)
+
+                if (touch.phase == TouchPhase.Began || touch.phase == TouchPhase.Moved)
                 {
                     _ray = Camera.main.ScreenPointToRay(touch.position);
-                    
+
                     if (Physics.Raycast(_ray, out RaycastHit hit, _rayDistance, _groundMask))
                     {
-                        _meshFinderInstance.transform.position = hit.point;
-                        
-                        BrushMoved?.Invoke(hit.point, _groundMask);
+                        _brushInstance.transform.position = hit.point;
+                        BrushMovedUnit?.Invoke(hit.point, _groundMask);
+                    }
+                }
+            }
+        }
+
+        private void HandleGridModifierTouch()
+        {
+            if (Input.touchCount > 0)
+            {
+                Touch touch = Input.GetTouch(0);
+
+                if (IsPointerOverUI(touch.position))
+                    return;
+
+                switch (touch.phase)
+                {
+                    case TouchPhase.Began:
+                        _isTouching = true;
+                        _touchTime = 0f;
+                        break;
+
+                    case TouchPhase.Stationary:
+                        if (_isTouching)
+                        {
+                            _touchTime += Time.deltaTime;
+                        }
+
+                        if (_touchTime >= _maxTouchDuration)
+                        {
+                            _ray = Camera.main.ScreenPointToRay(touch.position);
+
+                            if (Physics.Raycast(_ray, out RaycastHit hit, _rayDistance, _groundMask))
+                            {
+                                _brushInstance.transform.position = hit.point;
+                                BrushMovedGrid?.Invoke(hit.point, _groundMask);
+                            }
+
+                            _isTouching = false;
+                        }
+
+                        break;
+
+                    case TouchPhase.Ended:
+                    case TouchPhase.Canceled:
+                        _isTouching = false;
+                        _touchTime = 0f;
+                        break;
+                }
+            }
+        }
+        
+        private void HandleTextureModifierTouch()
+        {
+            if (Input.touchCount > 0)
+            {
+                Touch touch = Input.GetTouch(0);
+
+                if (IsPointerOverUI(touch.position))
+                    return;
+
+                if (touch.phase == TouchPhase.Moved)
+                {
+                    _ray = Camera.main.ScreenPointToRay(touch.position);
+
+                    if (Physics.Raycast(_ray, out RaycastHit hit, _rayDistance, _groundMask))
+                    {
+                        _brushInstance.transform.position = hit.point;
+                        BrushMovedTexture?.Invoke(hit.point, _groundMask);
                     }
                 }
             }

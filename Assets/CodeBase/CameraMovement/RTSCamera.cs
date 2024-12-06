@@ -23,6 +23,8 @@ namespace CodeBase.CameraMovement
     private void Start()
     {
         cam = Camera.main;
+
+        transform.position = new Vector3(500, transform.position.y, 500);
     }
 
     private void Update()

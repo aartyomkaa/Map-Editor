@@ -1,4 +1,5 @@
-﻿using UnityEditor;
+﻿using CodeBase.Logic.Chunks;
+using UnityEditor;
 using UnityEngine;
 
 namespace CodeBase.Logic
@@ -38,19 +39,16 @@ namespace CodeBase.Logic
 
             int vertIndex = 0;
             int triIndex = 0;
-
-            // Generate vertices
+            
             for (int z = 0; z <= chunkDepth; z++)
             {
                 for (int x = 0; x <= chunkWidth; x++)
                 {
-                    // Localize vertices relative to the chunk
                     vertices[vertIndex] = new Vector3(x * _cellSize, 0, z * _cellSize);
                     vertIndex++;
                 }
             }
-
-            // Generate triangles
+            
             for (int z = 0; z < chunkDepth; z++)
             {
                 for (int x = 0; x < chunkWidth; x++)
@@ -78,10 +76,10 @@ namespace CodeBase.Logic
             for (int i = 0; i < uvs.Length; i++)
             {
                 Vector3 vertex = mesh.vertices[i];
-                uvs[i] = new Vector2(vertex.x, vertex.z); // Top-down UV mapping (XZ plane)
+                uvs[i] = new Vector2(vertex.x, vertex.z);
             }
 
-            mesh.uv = uvs; // Assign the new UVs
+            mesh.uv = uvs;
             meshFilter.mesh = mesh;
             
 #if UNITY_EDITOR
@@ -90,11 +88,10 @@ namespace CodeBase.Logic
         }
         
 #if UNITY_EDITOR
-        // Function to save the mesh as an asset
         void SaveMesh(Mesh mesh, string path)
         {
-            Mesh newMesh = Instantiate(mesh); // Create a new mesh instance
-            AssetDatabase.CreateAsset(newMesh, path); // Save it to the specified path
+            Mesh newMesh = Instantiate(mesh);
+            AssetDatabase.CreateAsset(newMesh, path);
             AssetDatabase.SaveAssets();
             Debug.Log($"Mesh saved to {path}");
         }

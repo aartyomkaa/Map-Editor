@@ -1,7 +1,8 @@
 ﻿using CodeBase.Constants;
+using CodeBase.Data;
 using CodeBase.Logic;
+using CodeBase.Logic.Chunks;
 using UnityEngine;
-using Grid = CodeBase.Logic.Grid;
 
 namespace CodeBase
 {
@@ -9,14 +10,16 @@ namespace CodeBase
     {
         [SerializeField] private Chunk _chunkPrefab;
 
-        private Grid _grid;
+        private SaveLoadService _saveLoadService;
+        private GridTerrain _gridTerrain;
         private GameObject _chunksParent;
         private string _selectedMap;
 
         private void Awake()
         {
             _chunksParent = new GameObject("Grid");
-            _grid = new Grid(_chunkPrefab, _chunksParent);
+            _saveLoadService = new SaveLoadService();
+            _gridTerrain = new GridTerrain(_chunkPrefab, _chunksParent);
 
             _selectedMap = PlayerPrefs.GetString(Preferences.CurrentMap, string.Empty);
         }
@@ -24,9 +27,14 @@ namespace CodeBase
         private void Start()
         {
             if (string.IsNullOrEmpty(_selectedMap))
-                _grid.GenerateDefaultChunks();
+            {
+                _gridTerrain.GenerateDefaultChunks();
+            }
             else
-                _grid.LoadGrid(_selectedMap);
+            {
+                SerializedChunk[] chunks = _saveLoadService.LoadMap(_selectedMap);
+                _gridTerrain.LoadGrid(chunks);
+            }
         }
     }
 }
